@@ -121,8 +121,8 @@ st.markdown(
 )
 
 with st.sidebar:
-    st.header("Fuente de información")
-    st.success("Versión 2.1 · Incluye análisis por encuestador/a")
+    st.header("Fuente")
+    
     uploaded = st.file_uploader(
         "Directorio ENESEM",
         type=["xlsx", "xls", "csv"],
