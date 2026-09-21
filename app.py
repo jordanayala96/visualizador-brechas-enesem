@@ -123,11 +123,10 @@ st.markdown(
 with st.sidebar:
     st.header("Fuente")
     
-    uploaded = st.file_uploader(
-        "Directorio ENESEM",
-        type=["xlsx", "xls", "csv", "txt"],
-        help="La aplicación lee identificadores empresariales y las columnas operativas necesarias; no carga ventas.",
-    )
+uploaded = st.file_uploader(
+    "Directorio ENESEM",
+    type=["xlsx", "xls", "csv", "txt"],
+)
     local_file = default_file()
 
 try:
