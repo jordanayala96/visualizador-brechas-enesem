@@ -111,12 +111,17 @@ def _rewind(source: object) -> None:
 def _read_minimum_columns(source: str | Path | BinaryIO, filename: str | None = None) -> tuple[pd.DataFrame, dict[str, str]]:
     suffix = Path(filename or str(source)).suffix.lower()
     if suffix == ".csv":
-        _rewind(source)
-        header = pd.read_csv(source, nrows=0)
-        resolved = resolve_columns(header.columns)
-        _rewind(source)
-        frame = pd.read_csv(source, usecols=sorted(set(resolved.values())))
-        return frame, resolved
+    _rewind(source)
+    header = pd.read_csv(source, nrows=0, sep="\t")
+    resolved = resolve_columns(header.columns)
+
+    _rewind(source)
+    frame = pd.read_csv(
+        source,
+        sep="\t",
+        usecols=sorted(set(resolved.values()))
+    )
+    return frame, resolved
 
     _rewind(source)
     header = pd.read_excel(source, sheet_name=0, nrows=0)
