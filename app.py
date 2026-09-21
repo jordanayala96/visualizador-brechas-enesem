@@ -125,7 +125,7 @@ with st.sidebar:
     
     uploaded = st.file_uploader(
         "Directorio ENESEM",
-        type=["xlsx", "xls", "csv"],
+        type=["xlsx", "xls", "csv", "txt"],
         help="La aplicación lee identificadores empresariales y las columnas operativas necesarias; no carga ventas.",
     )
     local_file = default_file()
