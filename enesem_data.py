@@ -110,15 +110,21 @@ def _rewind(source: object) -> None:
 
 def _read_minimum_columns(source: str | Path | BinaryIO, filename: str | None = None) -> tuple[pd.DataFrame, dict[str, str]]:
     suffix = Path(filename or str(source)).suffix.lower()
-    if suffix == ".csv":
+if suffix in {".csv", ".txt"}:
     _rewind(source)
-    header = pd.read_csv(source, nrows=0, sep="\t")
+    header = pd.read_csv(
+        source,
+        nrows=0,
+        sep="\t",
+        encoding="utf-8"
+    )
     resolved = resolve_columns(header.columns)
 
     _rewind(source)
     frame = pd.read_csv(
         source,
         sep="\t",
+        encoding="utf-8",
         usecols=sorted(set(resolved.values()))
     )
     return frame, resolved
