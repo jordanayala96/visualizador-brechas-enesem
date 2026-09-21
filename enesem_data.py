@@ -110,20 +110,35 @@ def _rewind(source: object) -> None:
 
 def _read_minimum_columns(source: str | Path | BinaryIO, filename: str | None = None) -> tuple[pd.DataFrame, dict[str, str]]:
     suffix = Path(filename or str(source)).suffix.lower()
-    if suffix == ".csv":
-        _rewind(source)
-        header = pd.read_csv(source, nrows=0)
-        resolved = resolve_columns(header.columns)
-        _rewind(source)
-        frame = pd.read_csv(source, usecols=sorted(set(resolved.values())))
-        return frame, resolved
+if suffix in {".csv", ".txt"}:
+    last_error = None
 
-    _rewind(source)
-    header = pd.read_excel(source, sheet_name=0, nrows=0)
-    resolved = resolve_columns(header.columns)
-    _rewind(source)
-    frame = pd.read_excel(source, sheet_name=0, usecols=sorted(set(resolved.values())))
-    return frame, resolved
+    for encoding in ["utf-8-sig", "utf-16", "latin-1"]:
+        try:
+            _rewind(source)
+            header = pd.read_csv(
+                source,
+                nrows=0,
+                sep="\t",
+                encoding=encoding
+            )
+            resolved = resolve_columns(header.columns)
+
+            _rewind(source)
+            frame = pd.read_csv(
+                source,
+                sep="\t",
+                encoding=encoding,
+                usecols=sorted(set(resolved.values()))
+            )
+            return frame, resolved
+
+        except UnicodeDecodeError as error:
+            last_error = error
+
+    raise ValueError(
+        "No fue posible identificar la codificación del archivo TXT."
+    ) from last_error
 
 
 def load_directory(source: str | Path | bytes | BinaryIO, filename: str | None = None) -> pd.DataFrame:
