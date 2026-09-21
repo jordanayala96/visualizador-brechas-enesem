@@ -567,7 +567,7 @@ with tabs[4]:
     st.markdown(
         "<div class='method-note'>Los conteos corresponden a la fecha en que ocurrió cada evento. "
         "La atribución se realiza con el encuestador registrado actualmente para cada empresa. "
-        "Utilice este análisis para seguimiento operativo, considerando diferencias de cartera, "
+        "Utilice este análisis para seguimiento operativo, considerando diferencias de cargas, "
         "complejidad, ubicación y modalidad de levantamiento.</div>",
         unsafe_allow_html=True,
     )
@@ -736,7 +736,7 @@ with tabs[6]:
     st.markdown(
         f"""
         1. **Acordar la fecha de corte y los umbrales.** Los valores iniciales son {threshold_1}, {threshold_2} y {threshold_3} días.
-        2. **Comparar coordinaciones sin convertirlo en un ranking de personas.** Revisar diferencias de cartera, ubicación, tipo de informante, seguimiento y funcionamiento del SIPE.
+        2. **Comparar coordinaciones sin convertirlo en un ranking de personas.** Revisar diferencias de carga, ubicación, tipo de informante, seguimiento y funcionamiento del SIPE.
         3. **Examinar los casos extremos.** Clasificar su causa y registrar la acción que habría evitado o reducido la brecha.
         4. **Distinguir tiempos observados y casos abiertos.** Una empresa pendiente continúa acumulando días hasta la fecha de corte.
         5. **Definir reglas comunes.** Frecuencia de seguimiento, tiempo máximo por fase, responsable de escalar y evidencia mínima.
