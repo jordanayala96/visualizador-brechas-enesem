@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from enesem_data import (
@@ -13,6 +14,8 @@ from enesem_data import (
     company_case_table,
     filter_directory,
     infer_cutoff,
+    interviewer_activity_summary,
+    interviewer_totals,
     load_directory,
     quality_case_table,
     quality_summary,
@@ -111,7 +114,7 @@ st.markdown(
     """
     <div class="enesem-banner">
       <h1>Brecha entre socialización y diligenciamiento</h1>
-      <p>Tablero para la V Reunión nacional de evaluación y planificación de la ENESEM</p>
+      <p>Tablero para la V Reunión nacional de evaluación y planificación de la ENESEM · Versión 2.1</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -119,6 +122,7 @@ st.markdown(
 
 with st.sidebar:
     st.header("Fuente de información")
+    st.success("Versión 2.1 · Incluye análisis por encuestador/a")
     uploaded = st.file_uploader(
         "Directorio ENESEM",
         type=["xlsx", "xls", "csv"],
@@ -213,6 +217,7 @@ tabs = st.tabs([
     "Comparación zonal",
     "Casos críticos",
     "Evolución",
+    "Por encuestador",
     "Calidad de datos",
     "Guía para la mesa",
 ])
@@ -508,6 +513,7 @@ with tabs[3]:
                 ].sort_values("Inicio semana")
 
             activity_order = activity_view["Semana"].drop_duplicates().tolist()
+            activity_view = activity_view.reset_index(drop=True)
             activity_long = activity_view.melt(
                 id_vars=["Semana"],
                 value_vars=["Socializadas", "Diligenciadas", "Levantadas"],
@@ -520,37 +526,31 @@ with tabs[3]:
             totals[1].metric("Diligenciamientos en el periodo", f"{int(activity_view['Diligenciadas'].sum()):,}")
             totals[2].metric("Levantamientos en el periodo", f"{int(activity_view['Levantadas'].sum()):,}")
 
-            st.vega_lite_chart(
+            activity_figure = px.line(
                 activity_long,
-                {
-                    "mark": {"type": "line", "point": True},
-                    "encoding": {
-                        "x": {
-                            "field": "Semana",
-                            "type": "ordinal",
-                            "sort": activity_order,
-                            "scale": {"domain": activity_order},
-                            "axis": {"labelAngle": -45, "labelLimit": 130},
-                            "title": "Semana calendario (lunes a domingo)",
-                        },
-                        "y": {"field": "Empresas", "type": "quantitative", "title": "Empresas"},
-                        "color": {
-                            "field": "Actividad",
-                            "type": "nominal",
-                            "scale": {
-                                "domain": ["Socializadas", "Diligenciadas", "Levantadas"],
-                                "range": ["#008FA8", "#ED7D31", "#548235"],
-                            },
-                        },
-                        "tooltip": [
-                            {"field": "Semana", "type": "ordinal"},
-                            {"field": "Actividad", "type": "nominal"},
-                            {"field": "Empresas", "type": "quantitative", "format": ",.0f"},
-                        ],
-                    },
-                    "height": 390,
+                x="Semana",
+                y="Empresas",
+                color="Actividad",
+                markers=True,
+                category_orders={"Semana": activity_order},
+                color_discrete_map={
+                    "Socializadas": "#008FA8",
+                    "Diligenciadas": "#ED7D31",
+                    "Levantadas": "#548235",
                 },
+            )
+            activity_figure.update_layout(
+                height=440,
+                xaxis_title="Semana calendario (lunes a domingo)",
+                yaxis_title="Empresas",
+                legend_title_text="Actividad",
+                margin=dict(l=20, r=20, t=20, b=90),
+            )
+            activity_figure.update_xaxes(tickangle=-45, categoryorder="array", categoryarray=activity_order)
+            st.plotly_chart(
+                activity_figure,
                 use_container_width=True,
+                key=f"activity_weekly_{activity_choice}",
             )
             st.dataframe(
                 activity_view,
@@ -563,6 +563,146 @@ with tabs[3]:
             )
 
 with tabs[4]:
+    st.subheader("Seguimiento de la actividad por encuestador/a")
+    st.markdown(
+        "<div class='method-note'>Los conteos corresponden a la fecha en que ocurrió cada evento. "
+        "La atribución se realiza con el encuestador registrado actualmente para cada empresa. "
+        "Utilice este análisis para seguimiento operativo, considerando diferencias de cartera, "
+        "complejidad, ubicación y modalidad de levantamiento.</div>",
+        unsafe_allow_html=True,
+    )
+
+    person_zones = sorted_options(filtered, "zonal")
+    person_zone = st.selectbox(
+        "Coordinación Zonal",
+        ["Total filtrado", *person_zones],
+        key="interviewer_zone",
+    )
+    if person_zone == "Total filtrado":
+        person_frame = filtered.copy()
+    else:
+        person_frame = filtered.loc[filtered["zonal"].eq(person_zone)].copy()
+
+    summary_people = interviewer_totals(person_frame, cutoff)
+    st.markdown("#### Matriz comparativa del periodo")
+    st.dataframe(
+        summary_people,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "% D/S": st.column_config.ProgressColumn(
+                "% diligenciadas / socializadas", min_value=0, max_value=1, format="percent"
+            ),
+            "% L/D": st.column_config.ProgressColumn(
+                "% levantadas / diligenciadas", min_value=0, max_value=1, format="percent"
+            ),
+        },
+    )
+
+    available_people = summary_people["Encuestador/a"].astype(str).tolist()
+    if not available_people:
+        st.info("No existen encuestadores para los filtros seleccionados.")
+    else:
+        c_person, c_period = st.columns([2, 1])
+        selected_person = c_person.selectbox(
+            "Encuestador/a para visualizar",
+            available_people,
+            key="selected_interviewer",
+        )
+        granularity = c_period.radio(
+            "Periodicidad",
+            ["Semanal", "Diaria"],
+            horizontal=True,
+            key="interviewer_granularity",
+        )
+
+        person_activity = interviewer_activity_summary(person_frame, cutoff, granularity)
+        person_view = person_activity.loc[
+            person_activity["Encuestador/a"].eq(selected_person)
+        ].sort_values("Inicio periodo").reset_index(drop=True)
+
+        if person_view.empty:
+            st.info("El encuestador seleccionado no registra fechas operativas en el periodo.")
+        else:
+            person_cards = st.columns(4)
+            assigned = int(
+                person_frame.loc[person_frame["encuestador"].astype(str).eq(selected_person)].shape[0]
+            )
+            person_cards[0].metric("Empresas asignadas", f"{assigned:,}")
+            person_cards[1].metric("Socializadas", f"{int(person_view['Socializadas'].sum()):,}")
+            person_cards[2].metric("Diligenciadas", f"{int(person_view['Diligenciadas'].sum()):,}")
+            person_cards[3].metric("Levantadas", f"{int(person_view['Levantadas'].sum()):,}")
+
+            person_order = person_view["Periodo"].tolist()
+            person_long = person_view.melt(
+                id_vars=["Periodo"],
+                value_vars=["Socializadas", "Diligenciadas", "Levantadas"],
+                var_name="Actividad",
+                value_name="Empresas",
+            )
+            person_figure = px.line(
+                person_long,
+                x="Periodo",
+                y="Empresas",
+                color="Actividad",
+                markers=True,
+                category_orders={"Periodo": person_order},
+                color_discrete_map={
+                    "Socializadas": "#008FA8",
+                    "Diligenciadas": "#ED7D31",
+                    "Levantadas": "#548235",
+                },
+            )
+            person_figure.update_layout(
+                height=440,
+                xaxis_title=(
+                    "Semana calendario (lunes a domingo)"
+                    if granularity == "Semanal"
+                    else "Día calendario"
+                ),
+                yaxis_title="Empresas",
+                legend_title_text="Actividad",
+                margin=dict(l=20, r=20, t=25, b=90),
+            )
+            person_figure.update_xaxes(
+                tickangle=-45,
+                categoryorder="array",
+                categoryarray=person_order,
+            )
+            st.plotly_chart(
+                person_figure,
+                use_container_width=True,
+                key=f"interviewer_chart_{person_zone}_{selected_person}_{granularity}",
+            )
+
+            matrix_columns = [
+                "Inicio periodo",
+                "Fin periodo",
+                "Periodo",
+                "Socializadas",
+                "Diligenciadas",
+                "Levantadas",
+            ]
+            st.markdown(f"#### Matriz {granularity.lower()} de {selected_person}")
+            st.dataframe(
+                person_view[matrix_columns],
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "Inicio periodo": st.column_config.DateColumn("Inicio", format="DD/MM/YYYY"),
+                    "Fin periodo": st.column_config.DateColumn("Fin", format="DD/MM/YYYY"),
+                },
+            )
+            person_csv = person_view[matrix_columns].to_csv(index=False).encode("utf-8-sig")
+            st.download_button(
+                "Descargar matriz del encuestador",
+                data=person_csv,
+                file_name=f"actividad_{selected_person}_{granularity.lower()}.csv",
+                mime="text/csv",
+                key="download_interviewer_matrix",
+            )
+
+with tabs[5]:
     st.subheader("Controles de calidad de las fechas")
     checks = quality_summary(filtered, cutoff)
     total_issues = int(checks["Casos"].sum())
@@ -591,7 +731,7 @@ with tabs[4]:
     with st.expander("Ver casos que requieren corrección"):
         st.dataframe(problem_cases, hide_index=True, use_container_width=True)
 
-with tabs[5]:
+with tabs[6]:
     st.subheader("Cómo utilizar el tablero durante la mesa")
     st.markdown(
         f"""
