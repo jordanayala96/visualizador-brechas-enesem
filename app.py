@@ -121,12 +121,13 @@ st.markdown(
 )
 
 with st.sidebar:
-    st.header("Fuente")
-    
-uploaded = st.file_uploader(
-    "Directorio ENESEM",
-    type=["xlsx", "xls", "csv", "txt"],
-)
+    st.header("Fuente de información")
+    st.success("Versión 2.1 · Incluye análisis por encuestador/a")
+    uploaded = st.file_uploader(
+        "Directorio ENESEM",
+        type=["xlsx", "xls", "csv"],
+        help="La aplicación lee identificadores empresariales y las columnas operativas necesarias; no carga ventas.",
+    )
     local_file = default_file()
 
 try:
