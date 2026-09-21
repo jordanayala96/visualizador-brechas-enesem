@@ -495,6 +495,115 @@ def activity_weekly_summary(frame: pd.DataFrame, cutoff: object) -> pd.DataFrame
     return pd.DataFrame(rows)
 
 
+def interviewer_activity_summary(
+    frame: pd.DataFrame,
+    cutoff: object,
+    granularity: str = "Semanal",
+) -> pd.DataFrame:
+    """Cuenta eventos por encuestador y periodo, incluyendo periodos sin actividad."""
+    if granularity not in {"Semanal", "Diaria"}:
+        raise ValueError("La granularidad debe ser 'Semanal' o 'Diaria'.")
+
+    cutoff_ts = pd.Timestamp(cutoff).normalize()
+    event_columns = {
+        "Socializadas": "fecha_socializacion",
+        "Diligenciadas": "fecha_diligenciamiento",
+        "Levantadas": "fecha_levantamiento",
+    }
+    event_frames: list[pd.DataFrame] = []
+    for activity, column in event_columns.items():
+        events = frame.loc[
+            frame[column].notna() & frame[column].le(cutoff_ts),
+            ["encuestador", column],
+        ].copy()
+        if events.empty:
+            continue
+        events = events.rename(columns={column: "fecha_evento", "encuestador": "Encuestador/a"})
+        events["Encuestador/a"] = events["Encuestador/a"].fillna("Sin dato").astype(str)
+        events["Actividad"] = activity
+        event_frames.append(events)
+
+    if not event_frames:
+        return pd.DataFrame()
+
+    events = pd.concat(event_frames, ignore_index=True)
+    events["fecha_evento"] = pd.to_datetime(events["fecha_evento"], errors="coerce").dt.normalize()
+    if granularity == "Semanal":
+        events["Inicio periodo"] = _week_start(events["fecha_evento"])
+        frequency = "7D"
+    else:
+        events["Inicio periodo"] = events["fecha_evento"]
+        frequency = "D"
+
+    first_period = events["Inicio periodo"].min()
+    last_period = events["Inicio periodo"].max()
+    periods = pd.date_range(first_period, last_period, freq=frequency)
+    interviewers = sorted(frame["encuestador"].fillna("Sin dato").astype(str).unique())
+
+    counts = (
+        events.groupby(["Encuestador/a", "Inicio periodo", "Actividad"], observed=True)
+        .size()
+        .unstack("Actividad", fill_value=0)
+    )
+    complete_index = pd.MultiIndex.from_product(
+        [interviewers, periods], names=["Encuestador/a", "Inicio periodo"]
+    )
+    counts = counts.reindex(complete_index, fill_value=0).reset_index()
+    for activity in event_columns:
+        if activity not in counts:
+            counts[activity] = 0
+        counts[activity] = counts[activity].astype(int)
+
+    if granularity == "Semanal":
+        counts["Fin periodo"] = counts["Inicio periodo"] + pd.Timedelta(days=6)
+        counts["Periodo"] = counts["Inicio periodo"].map(_week_label)
+    else:
+        counts["Fin periodo"] = counts["Inicio periodo"]
+        counts["Periodo"] = counts["Inicio periodo"].dt.strftime("%d/%m/%Y")
+
+    return counts[
+        [
+            "Inicio periodo",
+            "Fin periodo",
+            "Periodo",
+            "Encuestador/a",
+            "Socializadas",
+            "Diligenciadas",
+            "Levantadas",
+        ]
+    ].sort_values(["Encuestador/a", "Inicio periodo"]).reset_index(drop=True)
+
+
+def interviewer_totals(frame: pd.DataFrame, cutoff: object) -> pd.DataFrame:
+    """Resume la actividad acumulada atribuida a cada encuestador."""
+    cutoff_ts = pd.Timestamp(cutoff).normalize()
+    work = frame.copy()
+    work["encuestador"] = work["encuestador"].fillna("Sin dato").astype(str)
+    rows: list[dict[str, object]] = []
+    for interviewer, group in work.groupby("encuestador", dropna=False, sort=True):
+        socialized = int(
+            (group["fecha_socializacion"].notna() & group["fecha_socializacion"].le(cutoff_ts)).sum()
+        )
+        diligenced = int(
+            (group["fecha_diligenciamiento"].notna() & group["fecha_diligenciamiento"].le(cutoff_ts)).sum()
+        )
+        lifted = int(
+            (group["fecha_levantamiento"].notna() & group["fecha_levantamiento"].le(cutoff_ts)).sum()
+        )
+        rows.append(
+            {
+                "Encuestador/a": interviewer,
+                "Empresas asignadas": int(len(group)),
+                "Socializadas": socialized,
+                "Diligenciadas": diligenced,
+                "Levantadas": lifted,
+                "% D/S": diligenced / socialized if socialized else np.nan,
+                "% L/D": lifted / diligenced if diligenced else np.nan,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def quality_summary(frame: pd.DataFrame, cutoff: object) -> pd.DataFrame:
     cutoff_ts = pd.Timestamp(cutoff).normalize()
     checks = [
