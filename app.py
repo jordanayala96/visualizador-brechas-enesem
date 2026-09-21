@@ -122,11 +122,11 @@ st.markdown(
 
 with st.sidebar:
     st.header("Fuente de información")
-    st.success("Versión 2.1 · Incluye análisis por encuestador/a")
+    st.success("Directorio de Empresas - ENESEM")
     uploaded = st.file_uploader(
         "Directorio ENESEM",
-        type=["xlsx", "xls", "csv"],
-        help="La aplicación lee identificadores empresariales y las columnas operativas necesarias; no carga ventas.",
+        type=["xlsx", "xls", "csv", "txt"],
+        help="La aplicación lee los id de cada empresa y las columnas necesarias.",
     )
     local_file = default_file()
 
