@@ -190,7 +190,7 @@ with st.sidebar:
         ["Todas", "Pendientes de diligenciamiento", "Diligenciadas", "Con inconsistencia de fechas"],
     )
     st.markdown(
-        "<div class='privacy-note'><strong>Uso interno:</strong> el tablero carga y muestra identificadores empresariales. No publique la aplicación, sus exportaciones ni capturas con información identificable. Las ventas no se leen.</div>",
+        "<div class='privacy-note'><strong>Uso interno:</strong> el tablero carga y muestra el Directorio de Empresas.</div>",
         unsafe_allow_html=True,
     )
 
