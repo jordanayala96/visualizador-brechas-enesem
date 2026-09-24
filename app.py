@@ -1,3 +1,4 @@
+from io import BytesIO
 from __future__ import annotations
 
 from pathlib import Path
@@ -408,12 +409,15 @@ with tabs[2]:
             },
             key="critical_editor",
         )
-        csv = edited.to_csv(index=False).encode("utf-8-sig")
+        excel = BytesIO()
+        with pd.ExcelWriter(excel, engine="openpyxl") as writer:
+            edited.to_excel(writer, sheet_name="Clasificación de casos", index=False)
+
         st.download_button(
             "Descargar clasificación de casos",
-            data=csv,
-            file_name="clasificacion_brechas_enesem.csv",
-            mime="text/csv",
+            data=excel.getvalue(),
+            file_name="clasificacion_brechas_enesem.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
 with tabs[3]:
