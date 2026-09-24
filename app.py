@@ -233,9 +233,18 @@ with tabs[0]:
     cards[5].metric("Fechas inconsistentes", f"{int(filtered['sd_inconsistente'].sum()):,}")
 
     threshold_cards = st.columns(3)
-    threshold_cards[0].metric(f"Casos >{threshold_1} días", f"{int(tracked.gt(threshold_1).sum()):,}")
-    threshold_cards[1].metric(f"Casos >{threshold_2} días", f"{int(tracked.gt(threshold_2).sum()):,}")
-    threshold_cards[2].metric(f"Casos >{threshold_3} días", f"{int(tracked.gt(threshold_3).sum()):,}")
+   threshold_cards[0].metric(
+    f"Casos {threshold_1 + 1}–{threshold_2} días",
+    f"{int(tracked.gt(threshold_1).mul(tracked.le(threshold_2)).sum()):,}"
+)
+threshold_cards[1].metric(
+    f"Casos {threshold_2 + 1}–{threshold_3} días",
+    f"{int(tracked.gt(threshold_2).mul(tracked.le(threshold_3)).sum()):,}"
+)
+threshold_cards[2].metric(
+    f"Casos >{threshold_3} días",
+    f"{int(tracked.gt(threshold_3).sum()):,}"
+)
 
     left, right = st.columns([1.15, 1])
     with left:
@@ -248,10 +257,25 @@ with tabs[0]:
             {
                 "mark": {"type": "bar", "opacity": 0.82},
                 "encoding": {
-                    "x": {"bin": {"maxbins": 35}, "field": "Días", "type": "quantitative", "title": "Días entre socialización y diligenciamiento / corte"},
-                    "y": {"aggregate": "count", "type": "quantitative", "title": "Empresas"},
-                    "color": {"field": "Estado", "type": "nominal", "scale": {"range": ["#008FA8", "#ED7D31", "#C00000"]}},
-                    "tooltip": [{"aggregate": "count", "type": "quantitative", "title": "Empresas"}],
+"x": {
+    "bin": {"step": 5},
+    "field": "Días",
+    "type": "quantitative",
+    "title": "Días entre socialización y diligenciamiento / corte"
+},
+"tooltip": [
+    {
+        "field": "Días",
+        "bin": {"step": 5},
+        "type": "quantitative",
+        "title": "Intervalo de días"
+    },
+    {
+        "aggregate": "count",
+        "type": "quantitative",
+        "title": "Empresas"
+    }
+],
                 },
                 "height": 340,
             },
