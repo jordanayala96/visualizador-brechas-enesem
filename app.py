@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from io import BytesIO
-
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from io import BytesIO
 
 from enesem_data import (
     ALERT_ORDER,
