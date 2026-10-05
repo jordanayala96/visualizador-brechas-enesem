@@ -25,8 +25,10 @@ from enesem_data import (
 )
 from coverage_tab import render_coverage_tab
 from quality_validations import (
+    apply_validation_catalog,
     evaluate_quality_validations,
     load_quality_source,
+    load_validation_catalog,
     load_week_calendar,
 )
 
@@ -34,6 +36,7 @@ from quality_validations import (
 BASE_DIR = Path(__file__).resolve().parent
 FIELD_CALENDAR_PATH = BASE_DIR / "data" / "CAMPO.xlsx"
 CRITIQUE_CALENDAR_PATH = BASE_DIR / "data" / "CRITICA.xlsx"
+VALIDATION_LABELS_PATH = BASE_DIR / "data" / "etiquetas.xlsx"
 
 
 st.set_page_config(
@@ -80,17 +83,21 @@ def run_quality_validations(
     allowed_cases: tuple[str, ...],
     field_calendar_modified: float,
     critique_calendar_modified: float,
+    validation_labels_modified: float,
 ):
-    del field_calendar_modified, critique_calendar_modified
+    del field_calendar_modified, critique_calendar_modified, validation_labels_modified
     raw = load_quality_source(content, filename=filename)
     field_calendar = load_week_calendar(FIELD_CALENDAR_PATH)
     critique_calendar = load_week_calendar(CRITIQUE_CALENDAR_PATH)
-    return evaluate_quality_validations(
+    catalog = load_validation_catalog(VALIDATION_LABELS_PATH)
+    summary, details, controls = evaluate_quality_validations(
         raw,
         field_calendar=field_calendar,
         critique_calendar=critique_calendar,
         allowed_cases=allowed_cases,
     )
+    summary, details = apply_validation_catalog(summary, details, catalog)
+    return summary, details, controls
 
 
 def default_file() -> Path | None:
@@ -782,13 +789,16 @@ with tabs[5]:
 
     with quality_tabs[0]:
         st.markdown(
-            "<div class='method-note'>Las reglas se ejecutan únicamente cuando el Directorio contiene "
-            "todas las variables requeridas. Las reglas que necesitan bases externas sensibles se mantienen "
-            "excluidas y las columnas faltantes se reportan como no evaluadas.</div>",
+            "<div class='method-note'>Las etiquetas, mensajes y secciones corresponden al catálogo oficial "
+            "de validaciones. El resumen presenta únicamente las reglas que pudieron ejecutarse con el "
+            "Directorio cargado.</div>",
             unsafe_allow_html=True,
         )
-        if not FIELD_CALENDAR_PATH.exists() or not CRITIQUE_CALENDAR_PATH.exists():
-            st.error("No se encontraron `data/CAMPO.xlsx` y `data/CRITICA.xlsx` en el proyecto.")
+        if not FIELD_CALENDAR_PATH.exists() or not CRITIQUE_CALENDAR_PATH.exists() or not VALIDATION_LABELS_PATH.exists():
+            st.error(
+                "No se encontraron `data/CAMPO.xlsx`, `data/CRITICA.xlsx` y "
+                "`data/etiquetas.xlsx` en el proyecto."
+            )
         else:
             try:
                 summary_quality, detail_quality, quality_controls = run_quality_validations(
@@ -797,6 +807,7 @@ with tabs[5]:
                     tuple(filtered["caso"].astype(str).tolist()),
                     FIELD_CALENDAR_PATH.stat().st_mtime,
                     CRITIQUE_CALENDAR_PATH.stat().st_mtime,
+                    VALIDATION_LABELS_PATH.stat().st_mtime,
                 )
             except Exception as exc:
                 st.error(f"No fue posible ejecutar las validaciones del Directorio: {exc}")
@@ -815,25 +826,22 @@ with tabs[5]:
                         "Identificador Empresa = 99999999999."
                     )
 
-                q1, q2 = st.columns(2)
-                category_options = summary_quality["Categoría"].drop_duplicates().tolist()
-                status_options = summary_quality["Estado"].drop_duplicates().tolist()
-                selected_categories = q1.multiselect(
-                    "Categoría de validación",
-                    category_options,
-                    default=category_options,
-                    key="quality_categories",
-                )
-                selected_statuses = q2.multiselect(
-                    "Estado de ejecución",
-                    status_options,
-                    default=status_options,
-                    key="quality_statuses",
+                section_options = summary_quality.loc[
+                    summary_quality["Estado"].eq("Ejecutada"), "Sección"
+                ].dropna().drop_duplicates().tolist()
+                selected_sections = st.multiselect(
+                    "Sección de validación",
+                    section_options,
+                    default=section_options,
+                    key="quality_sections",
                 )
                 summary_view = summary_quality.loc[
-                    summary_quality["Categoría"].isin(selected_categories)
-                    & summary_quality["Estado"].isin(selected_statuses)
-                ].copy()
+                    summary_quality["Estado"].eq("Ejecutada")
+                    & summary_quality["Sección"].isin(selected_sections)
+                , [
+                    "Código", "Alerta", "Sección", "Mensaje",
+                    "Empresas evaluadas", "Casos", "% con incidencia",
+                ]].copy()
 
                 left_quality, right_quality = st.columns([1.55, 1])
                 with left_quality:
@@ -851,8 +859,8 @@ with tabs[5]:
                 with right_quality:
                     st.markdown("#### Validaciones con más incidencias")
                     chart_quality = summary_view.loc[
-                        summary_view["Estado"].eq("Ejecutada") & summary_view["Casos"].gt(0),
-                        ["Código", "Validación", "Casos"],
+                        summary_view["Casos"].gt(0),
+                        ["Código", "Alerta", "Mensaje", "Casos"],
                     ].sort_values("Casos", ascending=False).head(15)
                     if chart_quality.empty:
                         st.info("No existen incidencias para los filtros seleccionados.")
@@ -866,7 +874,8 @@ with tabs[5]:
                                     "x": {"field": "Casos", "type": "quantitative", "title": "Incidencias"},
                                     "tooltip": [
                                         {"field": "Código", "type": "nominal"},
-                                        {"field": "Validación", "type": "nominal"},
+                                        {"field": "Alerta", "type": "nominal"},
+                                        {"field": "Mensaje", "type": "nominal"},
                                         {"field": "Casos", "type": "quantitative", "format": ",.0f"},
                                     ],
                                 },
@@ -886,6 +895,12 @@ with tabs[5]:
                     key="quality_codes",
                 )
                 detail_view = detail_quality.loc[detail_quality["Código"].isin(selected_codes)].copy()
+                detail_columns = [
+                    "Caso", "Identificador empresa", "RUC", "Razón social", "Coordinación Zonal",
+                    "Código", "Alerta", "Sección", "Mensaje", "Campos revisados",
+                    "Valores encontrados", "Criterio esperado",
+                ]
+                detail_view = detail_view[detail_columns]
                 if detail_view.empty:
                     st.success("No existen inconsistencias para las validaciones seleccionadas.")
                 else:
@@ -893,8 +908,8 @@ with tabs[5]:
 
                 quality_excel = BytesIO()
                 with pd.ExcelWriter(quality_excel, engine="openpyxl") as writer:
-                    summary_quality.to_excel(writer, sheet_name="Resumen validaciones", index=False)
-                    detail_quality.to_excel(writer, sheet_name="Detalle inconsistencias", index=False)
+                    summary_view.to_excel(writer, sheet_name="Resumen validaciones", index=False)
+                    detail_quality[detail_columns].to_excel(writer, sheet_name="Detalle inconsistencias", index=False)
                 st.download_button(
                     "Descargar validaciones en Excel",
                     data=quality_excel.getvalue(),
@@ -903,12 +918,12 @@ with tabs[5]:
                     key="download_quality_validations",
                 )
 
-                unavailable = summary_quality.loc[
-                    ~summary_quality["Estado"].eq("Ejecutada"),
-                    ["Código", "Validación", "Estado", "Variables faltantes"],
-                ]
-                with st.expander("Reglas no evaluadas o excluidas"):
-                    st.dataframe(unavailable, hide_index=True, use_container_width=True)
+                if quality_controls["rules_not_evaluated"] or quality_controls["rules_excluded"]:
+                    st.caption(
+                        f"No se incorporaron al resumen {quality_controls['rules_not_evaluated']:,} reglas "
+                        f"sin variables suficientes y {quality_controls['rules_excluded']:,} reglas que "
+                        "requieren fuentes externas sensibles."
+                    )
 
     with quality_tabs[1]:
         st.markdown("#### Controles de calidad de las fechas")

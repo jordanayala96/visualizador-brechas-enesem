@@ -113,6 +113,50 @@ def load_week_calendar(path: str | Path) -> pd.DataFrame:
     return result.drop_duplicates("date", keep="last").reset_index(drop=True)
 
 
+def load_validation_catalog(path: str | Path) -> pd.DataFrame:
+    """Lee el catálogo oficial de códigos, alertas, mensajes y secciones."""
+    catalog = pd.read_excel(path, sheet_name=0, dtype="string")
+    normalized = {normalize_name(column): column for column in catalog.columns}
+    required = {
+        "error n": "error_n",
+        "nombre nue": "nombre_nue",
+        "mensaje": "mensaje",
+        "seccion": "seccion",
+    }
+    missing = [label for label in required if label not in normalized]
+    if missing:
+        raise ValueError(
+            f"{Path(path).name} no contiene las columnas requeridas: {', '.join(missing)}."
+        )
+    result = pd.DataFrame({
+        "catalog_code": catalog[normalized["error n"]].astype("string").str.strip(),
+        "Alerta": catalog[normalized["nombre nue"]].astype("string").str.strip(),
+        "Mensaje": catalog[normalized["mensaje"]].astype("string").str.strip(),
+        "Sección": catalog[normalized["seccion"]].astype("string").str.strip(),
+    })
+    return result.dropna(subset=["catalog_code"]).drop_duplicates("catalog_code", keep="first")
+
+
+def apply_validation_catalog(
+    summary: pd.DataFrame,
+    details: pd.DataFrame,
+    catalog: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Añade las etiquetas oficiales sin perder los códigos internos 22-A a 22-E."""
+    def enrich(frame: pd.DataFrame) -> pd.DataFrame:
+        out = frame.copy()
+        out["catalog_code"] = out["Código"].astype("string").str.extract(r"^(\d+)", expand=False)
+        out = out.merge(catalog, on="catalog_code", how="left")
+        if "Categoría" in out:
+            out["Sección"] = out["Sección"].fillna(out["Categoría"])
+        if "Validación" in out:
+            out["Mensaje"] = out["Mensaje"].fillna(out["Validación"])
+        out["Alerta"] = out["Alerta"].fillna("Alerta_" + out["Código"].astype(str))
+        return out.drop(columns="catalog_code")
+
+    return enrich(summary), enrich(details)
+
+
 def _resolve_columns(columns: Iterable[object]) -> dict[str, str]:
     normalized = {normalize_name(column): str(column) for column in columns}
     resolved: dict[str, str] = {}
