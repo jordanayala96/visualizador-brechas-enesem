@@ -670,11 +670,15 @@ with tabs[3]:
 
 with tabs[4]:
     st.subheader("Seguimiento de la actividad por encuestador/a")
+
     st.markdown(
-        "<div class='method-note'>Los conteos corresponden a la fecha en que ocurrió cada evento. "
-        "La atribución se realiza con el encuestador registrado actualmente para cada empresa. "
-        "Utilice este análisis para seguimiento operativo, considerando diferencias de cargas, "
-        "complejidad, ubicación y modalidad de levantamiento.</div>",
+        "<div class='method-note'>"
+        "Los conteos corresponden a la fecha en que ocurrió cada evento. "
+        "La atribución se realiza con el encuestador registrado actualmente "
+        "para cada empresa. Utilice este análisis para seguimiento operativo, "
+        "considerando diferencias de cargas, complejidad, ubicación y modalidad "
+        "de levantamiento."
+        "</div>",
         unsafe_allow_html=True,
     )
 
@@ -695,7 +699,7 @@ with tabs[4]:
             filtered["zonal"].eq(person_zone)
         ].copy()
 
-    # Fechas disponibles en la Coordinación Zonal seleccionada
+    # Variables utilizadas para determinar el periodo operativo
     event_columns = [
         "fecha_socializacion",
         "fecha_diligenciamiento",
@@ -704,7 +708,10 @@ with tabs[4]:
 
     available_dates = pd.concat(
         [
-            pd.to_datetime(person_frame[column], errors="coerce")
+            pd.to_datetime(
+                person_frame[column],
+                errors="coerce",
+            )
             for column in event_columns
         ],
         ignore_index=True,
@@ -724,17 +731,22 @@ with tabs[4]:
         key="interviewer_start_date",
     )
 
-    # Convierte la fecha seleccionada en el lunes de esa semana
-    selected_start_ts = pd.Timestamp(selected_start).normalize()
-    period_start = selected_start_ts - pd.Timedelta(
-        days=selected_start_ts.dayofweek
+    # Se utiliza el lunes correspondiente a la fecha seleccionada
+    selected_start_ts = pd.Timestamp(
+        selected_start
+    ).normalize()
+
+    period_start = (
+        selected_start_ts
+        - pd.Timedelta(days=selected_start_ts.dayofweek)
     )
 
     start_col.caption(
         f"Desde el lunes {period_start.strftime('%d/%m/%Y')}"
     )
 
-    # Copia utilizada únicamente para los indicadores del periodo
+    # Esta copia se utiliza para aplicar el filtro temporal.
+    # No elimina las empresas asignadas.
     person_period_frame = person_frame.copy()
 
     for column in event_columns:
@@ -748,6 +760,7 @@ with tabs[4]:
             column,
         ] = pd.NaT
 
+    # Resumen por encuestador para el periodo seleccionado
     summary_people = interviewer_totals(
         person_period_frame,
         cutoff,
@@ -772,25 +785,41 @@ with tabs[4]:
                 max_value=1,
                 format="percent",
             ),
-            "% Levantadas/Asignadas": st.column_config.ProgressColumn(
-                "% levantadas / asignadas",
-                min_value=0,
-                max_value=1,
-                format="percent",
+            "% Levantadas/Asignadas": (
+                st.column_config.ProgressColumn(
+                    "% levantadas / asignadas",
+                    min_value=0,
+                    max_value=1,
+                    format="percent",
+                )
             ),
         },
     )
 
-    available_people = summary_people["Encuestador/a"].astype(str).tolist()
+    if "Encuestador/a" in summary_people.columns:
+        available_people = (
+            summary_people["Encuestador/a"]
+            .astype(str)
+            .tolist()
+        )
+    else:
+        available_people = []
+
     if not available_people:
-        st.info("No existen encuestadores para los filtros seleccionados.")
+        st.info(
+            "No existen encuestadores para los filtros "
+            "y el periodo seleccionados."
+        )
+
     else:
         c_person, c_period = st.columns([2, 1])
+
         selected_person = c_person.selectbox(
             "Encuestador/a para visualizar",
             available_people,
             key="selected_interviewer",
         )
+
         granularity = c_period.radio(
             "Periodicidad",
             ["Semanal", "Diaria"],
@@ -798,7 +827,7 @@ with tabs[4]:
             key="interviewer_granularity",
         )
 
-                person_activity = interviewer_activity_summary(
+        person_activity = interviewer_activity_summary(
             person_period_frame,
             cutoff,
             granularity,
@@ -806,47 +835,102 @@ with tabs[4]:
 
         if person_activity.empty:
             person_view = pd.DataFrame()
+
         else:
             person_view = (
                 person_activity.loc[
-                    person_activity["Encuestador/a"].eq(selected_person)
+                    person_activity["Encuestador/a"].eq(
+                        selected_person
+                    )
                 ]
                 .sort_values("Inicio periodo")
                 .reset_index(drop=True)
             )
 
         if person_view.empty:
-            st.info("El encuestador seleccionado no registra fechas operativas en el periodo.")
+            st.info(
+                "El encuestador seleccionado no registra "
+                "actividades en el periodo."
+            )
+
         else:
             person_cards = st.columns(4)
-            assigned = int(
-                person_frame.loc[person_frame["encuestador"].astype(str).eq(selected_person)].shape[0]
-            )
-            person_cards[0].metric("Empresas asignadas", f"{assigned:,}")
-            person_cards[1].metric("Socializadas", f"{int(person_view['Socializadas'].sum()):,}")
-            person_cards[2].metric("Diligenciadas", f"{int(person_view['Diligenciadas'].sum()):,}")
-            person_cards[3].metric("Levantadas", f"{int(person_view['Levantadas'].sum()):,}")
 
-            person_order = person_view["Periodo"].tolist()
+            # Se conserva la carga completa del encuestador.
+            # La fecha inicial no reduce las empresas asignadas.
+            assigned = int(
+                person_frame.loc[
+                    person_frame["encuestador"]
+                    .astype(str)
+                    .eq(selected_person)
+                ].shape[0]
+            )
+
+            total_socialized = int(
+                person_view["Socializadas"].sum()
+            )
+
+            total_diligenced = int(
+                person_view["Diligenciadas"].sum()
+            )
+
+            total_lifted = int(
+                person_view["Levantadas"].sum()
+            )
+
+            person_cards[0].metric(
+                "Empresas asignadas",
+                f"{assigned:,}",
+            )
+
+            person_cards[1].metric(
+                "Socializadas",
+                f"{total_socialized:,}",
+            )
+
+            person_cards[2].metric(
+                "Diligenciadas",
+                f"{total_diligenced:,}",
+            )
+
+            person_cards[3].metric(
+                "Levantadas",
+                f"{total_lifted:,}",
+            )
+
+            person_order = (
+                person_view["Periodo"]
+                .astype(str)
+                .tolist()
+            )
+
             person_long = person_view.melt(
                 id_vars=["Periodo"],
-                value_vars=["Socializadas", "Diligenciadas", "Levantadas"],
+                value_vars=[
+                    "Socializadas",
+                    "Diligenciadas",
+                    "Levantadas",
+                ],
                 var_name="Actividad",
                 value_name="Empresas",
             )
+
             person_figure = px.line(
                 person_long,
                 x="Periodo",
                 y="Empresas",
                 color="Actividad",
                 markers=True,
-                category_orders={"Periodo": person_order},
+                category_orders={
+                    "Periodo": person_order
+                },
                 color_discrete_map={
                     "Socializadas": "#008FA8",
                     "Diligenciadas": "#ED7D31",
                     "Levantadas": "#548235",
                 },
             )
+
             person_figure.update_layout(
                 height=440,
                 xaxis_title=(
@@ -856,17 +940,29 @@ with tabs[4]:
                 ),
                 yaxis_title="Empresas",
                 legend_title_text="Actividad",
-                margin=dict(l=20, r=20, t=25, b=90),
+                margin=dict(
+                    l=20,
+                    r=20,
+                    t=25,
+                    b=90,
+                ),
             )
+
             person_figure.update_xaxes(
                 tickangle=-45,
                 categoryorder="array",
                 categoryarray=person_order,
             )
+
             st.plotly_chart(
                 person_figure,
                 use_container_width=True,
-                key=f"interviewer_chart_{person_zone}_{selected_person}_{granularity}",
+                key=(
+                    f"interviewer_chart_"
+                    f"{person_zone}_"
+                    f"{selected_person}_"
+                    f"{granularity}"
+                ),
             )
 
             matrix_columns = [
@@ -877,21 +973,45 @@ with tabs[4]:
                 "Diligenciadas",
                 "Levantadas",
             ]
-            st.markdown(f"#### Matriz {granularity.lower()} de {selected_person}")
+
+            st.markdown(
+                f"#### Matriz {granularity.lower()} "
+                f"de {selected_person}"
+            )
+
             st.dataframe(
                 person_view[matrix_columns],
                 hide_index=True,
                 use_container_width=True,
                 column_config={
-                    "Inicio periodo": st.column_config.DateColumn("Inicio", format="DD/MM/YYYY"),
-                    "Fin periodo": st.column_config.DateColumn("Fin", format="DD/MM/YYYY"),
+                    "Inicio periodo": (
+                        st.column_config.DateColumn(
+                            "Inicio",
+                            format="DD/MM/YYYY",
+                        )
+                    ),
+                    "Fin periodo": (
+                        st.column_config.DateColumn(
+                            "Fin",
+                            format="DD/MM/YYYY",
+                        )
+                    ),
                 },
             )
-            person_csv = person_view[matrix_columns].to_csv(index=False).encode("utf-8-sig")
+
+            person_csv = (
+                person_view[matrix_columns]
+                .to_csv(index=False)
+                .encode("utf-8-sig")
+            )
+
             st.download_button(
                 "Descargar matriz del encuestador",
                 data=person_csv,
-                file_name=f"actividad_{selected_person}_{granularity.lower()}.csv",
+                file_name=(
+                    f"actividad_{selected_person}_"
+                    f"{granularity.lower()}.csv"
+                ),
                 mime="text/csv",
                 key="download_interviewer_matrix",
             )
