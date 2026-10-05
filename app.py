@@ -678,109 +678,107 @@ with tabs[4]:
         unsafe_allow_html=True,
     )
 
-person_zones = sorted_options(filtered, "zonal")
+    person_zones = sorted_options(filtered, "zonal")
 
-zone_col, start_col = st.columns([2, 1])
+    zone_col, start_col = st.columns([2, 1])
 
-person_zone = zone_col.selectbox(
-    "Coordinación Zonal",
-    ["Total filtrado", *person_zones],
-    key="interviewer_zone",
-)
-
-if person_zone == "Total filtrado":
-    person_frame = filtered.copy()
-else:
-    person_frame = filtered.loc[
-        filtered["zonal"].eq(person_zone)
-    ].copy()
-
-
-# Fechas disponibles en la Coordinación Zonal seleccionada
-event_columns = [
-    "fecha_socializacion",
-    "fecha_diligenciamiento",
-    "fecha_levantamiento",
-]
-
-available_dates = pd.concat(
-    [
-        pd.to_datetime(person_frame[column], errors="coerce")
-        for column in event_columns
-    ],
-    ignore_index=True,
-).dropna()
-
-cutoff_date = pd.Timestamp(cutoff).date()
-
-if available_dates.empty:
-    suggested_start = cutoff_date
-else:
-    suggested_start = available_dates.min().date()
-
-
-selected_start = start_col.date_input(
-    "Visualizar desde la semana de",
-    value=suggested_start,
-    max_value=cutoff_date,
-    key="interviewer_start_date",
-)
-
-# Convierte la fecha seleccionada en el lunes de esa semana
-selected_start_ts = pd.Timestamp(selected_start).normalize()
-period_start = selected_start_ts - pd.Timedelta(
-    days=selected_start_ts.dayofweek
-)
-
-start_col.caption(
-    f"Desde el lunes {period_start.strftime('%d/%m/%Y')}"
-)
-
-
-# Copia utilizada únicamente para los indicadores del periodo
-person_period_frame = person_frame.copy()
-
-for column in event_columns:
-    dates = pd.to_datetime(
-        person_period_frame[column],
-        errors="coerce",
+    person_zone = zone_col.selectbox(
+        "Coordinación Zonal",
+        ["Total filtrado", *person_zones],
+        key="interviewer_zone",
     )
 
-    person_period_frame.loc[
-        dates.lt(period_start),
-        column,
-    ] = pd.NaT
+    if person_zone == "Total filtrado":
+        person_frame = filtered.copy()
+    else:
+        person_frame = filtered.loc[
+            filtered["zonal"].eq(person_zone)
+        ].copy()
 
+    # Fechas disponibles en la Coordinación Zonal seleccionada
+    event_columns = [
+        "fecha_socializacion",
+        "fecha_diligenciamiento",
+        "fecha_levantamiento",
+    ]
 
-summary_people = interviewer_totals(
-    person_period_frame,
-    cutoff,
-)
+    available_dates = pd.concat(
+        [
+            pd.to_datetime(person_frame[column], errors="coerce")
+            for column in event_columns
+        ],
+        ignore_index=True,
+    ).dropna()
+
+    cutoff_date = pd.Timestamp(cutoff).date()
+
+    if available_dates.empty:
+        suggested_start = cutoff_date
+    else:
+        suggested_start = available_dates.min().date()
+
+    selected_start = start_col.date_input(
+        "Visualizar desde la semana de",
+        value=suggested_start,
+        max_value=cutoff_date,
+        key="interviewer_start_date",
+    )
+
+    # Convierte la fecha seleccionada en el lunes de esa semana
+    selected_start_ts = pd.Timestamp(selected_start).normalize()
+    period_start = selected_start_ts - pd.Timedelta(
+        days=selected_start_ts.dayofweek
+    )
+
+    start_col.caption(
+        f"Desde el lunes {period_start.strftime('%d/%m/%Y')}"
+    )
+
+    # Copia utilizada únicamente para los indicadores del periodo
+    person_period_frame = person_frame.copy()
+
+    for column in event_columns:
+        dates = pd.to_datetime(
+            person_period_frame[column],
+            errors="coerce",
+        )
+
+        person_period_frame.loc[
+            dates.lt(period_start),
+            column,
+        ] = pd.NaT
+
+    summary_people = interviewer_totals(
+        person_period_frame,
+        cutoff,
+    )
+
     st.markdown("#### Matriz comparativa del periodo")
+
     st.dataframe(
         summary_people,
         hide_index=True,
         use_container_width=True,
         column_config={
-    "% D/S": st.column_config.ProgressColumn(
-        "% diligenciadas / socializadas",
-        min_value=0,
-        max_value=1,
-        format="percent",
-    ),
-    "% L/D": st.column_config.ProgressColumn(
-        "% levantadas / diligenciadas",
-        min_value=0,
-        max_value=1,
-        format="percent",
-    ),
-    "% Levantadas/Asignadas": st.column_config.ProgressColumn(
-        "% levantadas / asignadas",
-        min_value=0,
-        max_value=1,
-        format="percent",
-    ),
-},
+            "% D/S": st.column_config.ProgressColumn(
+                "% diligenciadas / socializadas",
+                min_value=0,
+                max_value=1,
+                format="percent",
+            ),
+            "% L/D": st.column_config.ProgressColumn(
+                "% levantadas / diligenciadas",
+                min_value=0,
+                max_value=1,
+                format="percent",
+            ),
+            "% Levantadas/Asignadas": st.column_config.ProgressColumn(
+                "% levantadas / asignadas",
+                min_value=0,
+                max_value=1,
+                format="percent",
+            ),
+        },
     )
 
     available_people = summary_people["Encuestador/a"].astype(str).tolist()
