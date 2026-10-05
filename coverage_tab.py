@@ -94,7 +94,7 @@ def _chart(frame: pd.DataFrame, executed_column: str, title: str) -> go.Figure:
         title=title,
         height=390,
         margin=dict(l=20, r=20, t=55, b=30),
-        xaxis_title="Semana operativa",
+        xaxis_title="Semana operativo",
         yaxis_title="Empresas",
         legend_title_text="",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
@@ -160,7 +160,7 @@ def render_coverage_tab(
         key="coverage_cutoff",
     )
     selected_week = int(p2.number_input(
-        "Semana operativa",
+        "Semana operativo",
         min_value=1,
         max_value=max_week,
         value=inferred_week,
