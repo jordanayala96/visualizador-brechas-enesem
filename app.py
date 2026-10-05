@@ -365,11 +365,28 @@ with tabs[1]:
         zonal,
         hide_index=True,
         use_container_width=True,
-        column_config={
-            "% diligenciadas": st.column_config.ProgressColumn("% diligenciadas", min_value=0, max_value=1, format="percent"),
-            "Mediana S→D": st.column_config.NumberColumn("Mediana S→D", format="%.1f días"),
-            "P90 S→D": st.column_config.NumberColumn("P90 S→D", format="%.1f días"),
-        },
+column_config={
+    "% diligenciadas": st.column_config.ProgressColumn(
+        "% diligenciadas",
+        min_value=0,
+        max_value=1,
+        format="percent",
+    ),
+    "% levantadas": st.column_config.ProgressColumn(
+        "% levantadas",
+        min_value=0,
+        max_value=1,
+        format="percent",
+    ),
+    "Mediana S→D": st.column_config.NumberColumn(
+        "Mediana S→D",
+        format="%.1f días",
+    ),
+    "P90 S→D": st.column_config.NumberColumn(
+        "P90 S→D",
+        format="%.1f días",
+    ),
+},
     )
 
     col1, col2 = st.columns(2)
