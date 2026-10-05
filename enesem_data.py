@@ -761,6 +761,7 @@ def company_case_table(frame: pd.DataFrame) -> pd.DataFrame:
     ]
     result = frame.loc[:, columns].copy()
     result["dias_sd"] = result["dias_sd"].round().astype("Int64")
+    result["dias_dl"] = result["dias_dl"].round().astype("Int64")
     return result.rename(
         columns={
             "caso": "Caso",
@@ -774,7 +775,9 @@ def company_case_table(frame: pd.DataFrame) -> pd.DataFrame:
             "fase_actual": "Fase actual",
             "fecha_socializacion": "Fecha socialización",
             "fecha_diligenciamiento": "Fecha diligenciamiento",
+            "fecha_levantamiento": "Fecha levantamiento",
             "dias_sd": "Días S→D",
+            "dias_dl": "Días D→L",
             "estado_sd": "Estado S→D",
             "alerta_sd": "Alerta",
         }
