@@ -382,7 +382,7 @@ def generate_coverage_pptx(
     )
     _add_text(
         slide,
-        f"Semana operativa seleccionada: {report.selected_week}",
+        f"Semana seleccionada: {report.selected_week}",
         0.55, 6.98, 4.8, 0.22, size=8, color=SLATE,
     )
 
@@ -423,7 +423,7 @@ def generate_coverage_pptx(
         )
         _add_text(
             phase_slide,
-            f"Planificación acumulada y resultados observados hasta la semana {report.selected_week}.",
+            f"Planificación y resultados hasta la semana {report.selected_week}.",
             0.72, 6.76, 8.4, 0.25, size=8.5, color=SLATE,
         )
 
@@ -454,8 +454,8 @@ def generate_coverage_pptx(
         _add_novelty_table(novelty_slide, part, 0.65, 1.22, 12.0, 5.65)
         _add_text(
             novelty_slide,
-            "Efectivas con novedad: se excluye la categoría “Efectiva (sin novedad)”. "
-            "Las no efectivas corresponden a EFECT_CRIT = 2.",
+            "”. "
+            "",
             0.70, 6.98, 11.5, 0.23, size=8.2, color=SLATE,
         )
 
