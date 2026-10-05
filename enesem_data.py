@@ -239,13 +239,14 @@ def prepare_directory(raw: pd.DataFrame, resolved: dict[str, str]) -> pd.DataFra
         "fecha_critica": "criticism_date",
         "fecha_revision": "review_date",
     }
+
     for target, key in date_map.items():
-    out[target] = pd.to_datetime(
-        _series(raw, resolved, key),
-        errors="coerce",
-        format="mixed",
-        dayfirst=True,
-    )
+        out[target] = pd.to_datetime(
+            _series(raw, resolved, key),
+            errors="coerce",
+            format="mixed",
+            dayfirst=True,
+        )
 
     flag_map = {
         "marca_socializada": "socialized_flag",
