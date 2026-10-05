@@ -465,6 +465,14 @@ with tabs[2]:
                 "Fecha socialización": st.column_config.DateColumn("Fecha socialización", format="DD/MM/YYYY"),
                 "Fecha diligenciamiento": st.column_config.DateColumn("Fecha diligenciamiento", format="DD/MM/YYYY"),
                 "Días S→D": st.column_config.NumberColumn("Días S→D", format="%d"),
+                "Fecha levantamiento": st.column_config.DateColumn(
+    "Fecha levantamiento",
+    format="DD/MM/YYYY",
+),
+"Días D→L": st.column_config.NumberColumn(
+    "Días D→L",
+    format="%d",
+),
             },
             key="critical_editor",
         )
