@@ -696,13 +696,25 @@ with tabs[4]:
         hide_index=True,
         use_container_width=True,
         column_config={
-            "% D/S": st.column_config.ProgressColumn(
-                "% diligenciadas / socializadas", min_value=0, max_value=1, format="percent"
-            ),
-            "% L/D": st.column_config.ProgressColumn(
-                "% levantadas / diligenciadas", min_value=0, max_value=1, format="percent"
-            ),
-        },
+    "% D/S": st.column_config.ProgressColumn(
+        "% diligenciadas / socializadas",
+        min_value=0,
+        max_value=1,
+        format="percent",
+    ),
+    "% L/D": st.column_config.ProgressColumn(
+        "% levantadas / diligenciadas",
+        min_value=0,
+        max_value=1,
+        format="percent",
+    ),
+    "% Levantadas/Asignadas": st.column_config.ProgressColumn(
+        "% levantadas / asignadas",
+        min_value=0,
+        max_value=1,
+        format="percent",
+    ),
+},
     )
 
     available_people = summary_people["Encuestador/a"].astype(str).tolist()
