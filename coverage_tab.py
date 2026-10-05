@@ -175,8 +175,8 @@ def render_coverage_tab(
     )
 
     source_cards = st.columns(4)
-    source_cards[0].metric("Empresas disponibles", f"{source_controls['companies_used']:,}")
-    source_cards[1].metric("ID especial excluido", f"{source_controls['excluded_special_id']:,}")
+    source_cards[0].metric("Empresas", f"{source_controls['companies_used']:,}")
+    source_cards[1].metric("ID excluido", f"{source_controls['excluded_special_id']:,}")
     source_cards[2].metric("Semana máxima planificada", f"{max_week}")
     source_cards[3].metric("Inicio operativo", f"{pd.Timestamp(operation_start):%d/%m/%Y}")
 
@@ -206,9 +206,9 @@ def render_coverage_tab(
         return
 
     validation_cards = st.columns(4)
-    validation_cards[0].metric("Empresas utilizadas", f"{report.controls['companies_used']:,}")
-    validation_cards[1].metric("Registros de avance", f"{report.controls['progress_rows']:,}")
-    validation_cards[2].metric("Sin cruce de avance", f"{report.controls['missing_progress']:,}")
+    validation_cards[0].metric("Empresas Utilizadas", f"{report.controls['companies_used']:,}")
+    validation_cards[1].metric("Registros en reporte", f"{report.controls['progress_rows']:,}")
+    validation_cards[2].metric("Sin avance", f"{report.controls['missing_progress']:,}")
     validation_cards[3].metric("Semana del reporte", f"{report.selected_week}")
 
     if report.warnings:
