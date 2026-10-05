@@ -461,10 +461,10 @@ def generate_coverage_pptx(
 
     closing = presentation.slides.add_slide(blank)
     _background(closing, _asset(assets_dir, "closing_enesem.png"))
-    _add_text(closing, "Gracias", 7.25, 2.55, 3.85, 0.75, size=34, color=NAVY, bold=True, align=PP_ALIGN.CENTER)
+    _add_text(closing, "", 7.25, 2.55, 3.85, 0.75, size=34, color=NAVY, bold=True, align=PP_ALIGN.CENTER)
     _add_text(
         closing,
-        "Encuesta Estructural Empresarial",
+        "",
         6.72, 3.38, 4.90, 0.42, size=17, color=PRIMARY, bold=True, align=PP_ALIGN.CENTER,
     )
 
