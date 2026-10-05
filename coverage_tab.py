@@ -151,11 +151,11 @@ def render_coverage_tab(
         )
     with status_col:
         st.success(f"Directorio cargado: {directory_filename}")
-        st.caption("Planificación fija: data/Planificacion.xlsx")
+        st.caption("Planificación zonal: 5/10/2026")
 
     p1, p2, p3 = st.columns(3)
     cutoff = p1.date_input(
-        "Fecha de corte del reporte",
+        "Fecha del reporte",
         value=default_cutoff_ts.date(),
         key="coverage_cutoff",
     )
@@ -171,7 +171,7 @@ def render_coverage_tab(
         "Inicio de la semana 1",
         value=inferred_start.date(),
         key="coverage_operation_start",
-        help="Solo se usa para derivar semanas cuando COB_CAMP o COB/CRIT no existen.",
+        help="Solo se usa para cuando COB_CAMP o COB/CRIT no existen.",
     )
 
     source_cards = st.columns(4)
