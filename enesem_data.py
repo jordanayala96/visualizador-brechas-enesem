@@ -642,6 +642,7 @@ def interviewer_totals(frame: pd.DataFrame, cutoff: object) -> pd.DataFrame:
                 "Levantadas": lifted,
                 "% D/S": diligenced / socialized if socialized else np.nan,
                 "% L/D": lifted / diligenced if diligenced else np.nan,
+                "% Levantadas/Asignadas": lifted / len(group) if len(group) else np.nan,
             }
         )
     return pd.DataFrame(rows)
