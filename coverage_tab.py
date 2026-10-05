@@ -182,7 +182,7 @@ def render_coverage_tab(
     source_cards[3].metric("Inicio operativo", f"{pd.Timestamp(operation_start):%d/%m/%Y}")
 
     if source_warnings:
-        with st.expander("Advertencias del Directorio"):
+        with st.expander("Advertencias"):
             for warning in source_warnings:
                 st.warning(warning)
 
@@ -213,7 +213,7 @@ def render_coverage_tab(
     validation_cards[3].metric("Semana del reporte", f"{report.selected_week}")
 
     if report.warnings:
-        with st.expander("Controles y advertencias", expanded=True):
+        with st.expander("Advertencias", expanded=True):
             for warning in report.warnings:
                 st.warning(warning)
 
@@ -277,8 +277,8 @@ def render_coverage_tab(
 
     st.markdown("#### Generar archivo")
     st.caption(
-        "La presentación utiliza la paleta corporativa ENESEM. Se eliminaron los verdes anteriores y "
-        "se reemplazaron por azul institucional, azul marino, cian y acentos ámbar."
+        "ENESEM"
+        ""
     )
     try:
         assets_signature = tuple(
