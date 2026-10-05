@@ -1196,6 +1196,6 @@ with tabs[6]:
 
 st.divider()
 st.caption(
-    "Uso interno ENESEM · Los resultados dependen de la fecha de corte y de la calidad de las fechas registradas. "
-    "Revise las inconsistencias antes de presentar conclusiones definitivas."
+    "Los resultados dependen de la fecha de corte y de la calidad de las fechas registradas. "
+    "ENESEM"
 )
