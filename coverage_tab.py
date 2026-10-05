@@ -66,8 +66,8 @@ def _chart(frame: pd.DataFrame, executed_column: str, title: str) -> go.Figure:
     figure = go.Figure()
     figure.add_trace(go.Scatter(
         x=frame["Semana"],
-        y=frame["Muestra pendiente según planificación"],
-        name="Muestra pendiente",
+        y=frame["Muestra según planificación"],
+        name="Muestra",
         mode="lines",
         fill="tozeroy",
         line=dict(color="#D8E2F0", width=1.4),
@@ -75,8 +75,8 @@ def _chart(frame: pd.DataFrame, executed_column: str, title: str) -> go.Figure:
     ))
     figure.add_trace(go.Scatter(
         x=frame["Semana"],
-        y=frame["Planificado acumulado"],
-        name="Planificado acumulado",
+        y=frame["Planificado"],
+        name="Planificado",
         mode="lines",
         fill="tozeroy",
         line=dict(color="#00A6C8", width=2.0),
@@ -85,7 +85,7 @@ def _chart(frame: pd.DataFrame, executed_column: str, title: str) -> go.Figure:
     figure.add_trace(go.Scatter(
         x=frame["Semana"],
         y=frame[executed_column],
-        name="Ejecutado acumulado",
+        name="Ejecutado",
         mode="lines+markers",
         line=dict(color="#2C70E7", width=3.0),
         marker=dict(size=5),
@@ -118,8 +118,8 @@ def render_coverage_tab(
 ) -> None:
     st.subheader("Reporte de cobertura")
     st.markdown(
-        "<div class='method-note'>El reporte utiliza el Directorio completo y no hereda los filtros de "
-        "las demás pestañas. La planificación se lee desde el archivo fijo del proyecto.</div>",
+        "<div class='method-note'>El reporte utiliza el Directorio"
+        "Además del Reporte de Avance </div>",
         unsafe_allow_html=True,
     )
 
@@ -242,7 +242,7 @@ def render_coverage_tab(
             },
         )
         st.plotly_chart(
-            _chart(report.field_chart, "Ejecutadas acumuladas", "Cobertura acumulada de levantamiento"),
+            _chart(report.field_chart, "Ejecutadas", "Cobertura acumulada de levantamiento en campo nacional"),
             use_container_width=True,
             key="coverage_field_chart",
         )
@@ -259,7 +259,7 @@ def render_coverage_tab(
             },
         )
         st.plotly_chart(
-            _chart(report.critique_chart, "Criticadas acumuladas", "Cobertura acumulada de crítica"),
+            _chart(report.critique_chart, "Criticadas", "Cobertura acumulada de crítica nacional"),
             use_container_width=True,
             key="coverage_crit_chart",
         )
@@ -277,7 +277,7 @@ def render_coverage_tab(
 
     st.markdown("#### Generar archivo")
     st.caption(
-        "ENESEM"
+        "Reporte de cobertura"
         ""
     )
     try:
