@@ -266,10 +266,10 @@ tabs = st.tabs([
 ])
 
 with tabs[0]:
-    st.caption(f"Fecha de corte seleccionada: {pd.Timestamp(cutoff):%d/%m/%Y} · {len(filtered):,} empresas filtradas")
+    st.caption(f"Fecha de corte: {pd.Timestamp(cutoff):%d/%m/%Y} · {len(filtered):,} empresas filtradas")
     cards = st.columns(6)
     cards[0].metric("Empresas", f"{len(filtered):,}")
-    cards[1].metric("Diligenciadas válidas", f"{int(filtered['sd_completada'].sum()):,}")
+    cards[1].metric("Diligenciadas", f"{int(filtered['sd_completada'].sum()):,}")
     cards[2].metric("Pendientes", f"{int(filtered['sd_pendiente'].sum()):,}")
     cards[3].metric("Mediana S→D", days(valid_completed.median() if len(valid_completed) else None))
     cards[4].metric("P90 S→D", days(valid_completed.quantile(.90) if len(valid_completed) else None))
@@ -349,7 +349,7 @@ with tabs[0]:
             use_container_width=True,
         )
 
-    st.subheader("Contexto del ciclo completo")
+    st.subheader("Contexto del ciclo")
     context_cols = st.columns(4)
     dl_complete = filtered.loc[filtered["dl_completada"], "dias_dl"].dropna()
     sl_complete = filtered.loc[filtered["sl_completada"], "dias_sl"].dropna()
@@ -493,10 +493,10 @@ with tabs[3]:
 
     with evolution_tabs[0]:
         st.markdown(
-            f"<div class='method-note'>Cada cohorte reúne las empresas socializadas de lunes a domingo. "
-            f"El porcentaje oportuno divide las empresas diligenciadas en un máximo de {threshold_1} días "
-            f"para todas las empresas socializadas de la cohorte. Solo se calcula cuando toda la cohorte "
-            f"ya tuvo al menos {threshold_1} días de observación.</div>",
+            f"<div class='method-note'>Cada corte reúne las empresas socializadas de lunes a domingo. "
+            f"El porcentaje divide las empresas diligenciadas en un máximo de {threshold_1} días "
+            f"para todas las empresas socializadas del corte. Solo se calcula cuando todo el corte "
+            f"ya tuvo al menos {threshold_1} días.</div>",
             unsafe_allow_html=True,
         )
         weekly = weekly_summary(filtered, threshold_1, cutoff)
@@ -589,9 +589,9 @@ with tabs[3]:
 
     with evolution_tabs[1]:
         st.markdown(
-            "<div class='method-note'>Esta vista ubica cada evento en la semana calendario en la que ocurrió. "
-            "Por eso puede continuar después de la última semana de socialización y mostrar actividad de "
-            "diligenciamiento y levantamiento hasta la fecha de corte.</div>",
+            "<div class='method-note'>Esta pestaña ubica cada evento en la semana calendario en la que ocurrió. "
+            ""
+            ".</div>",
             unsafe_allow_html=True,
         )
         activity = activity_weekly_summary(filtered, cutoff)
@@ -1018,13 +1018,11 @@ with tabs[4]:
 
 with tabs[5]:
     st.subheader("Calidad de datos")
-    quality_tabs = st.tabs(["Validaciones del Directorio", "Controles temporales"])
+    quality_tabs = st.tabs(["Validaciones del Directorio", "Controles de fechas"])
 
     with quality_tabs[0]:
         st.markdown(
-            "<div class='method-note'>Las etiquetas, mensajes y secciones corresponden al catálogo oficial "
-            "de validaciones. El resumen presenta únicamente las reglas que pudieron ejecutarse con el "
-            "Directorio cargado.</div>",
+            "<div class='method-note'>Módulo de validaciones.</div>",
             unsafe_allow_html=True,
         )
         if not FIELD_CALENDAR_PATH.exists() or not CRITIQUE_CALENDAR_PATH.exists() or not VALIDATION_LABELS_PATH.exists():
@@ -1046,10 +1044,10 @@ with tabs[5]:
                 st.error(f"No fue posible ejecutar las validaciones del Directorio: {exc}")
             else:
                 quality_cards = st.columns(6)
-                quality_cards[0].metric("Empresas evaluadas", f"{quality_controls['companies_evaluated']:,}")
-                quality_cards[1].metric("Con incidencias", f"{quality_controls['companies_with_issues']:,}")
+                quality_cards[0].metric("Número de Empresas", f"{quality_controls['companies_evaluated']:,}")
+                quality_cards[1].metric("Con inconsistencias", f"{quality_controls['companies_with_issues']:,}")
                 quality_cards[2].metric("Incidencias", f"{quality_controls['issues']:,}")
-                quality_cards[3].metric("Reglas ejecutadas", f"{quality_controls['rules_executed']:,}")
+                quality_cards[3].metric("Alertas ejecutadas", f"{quality_controls['rules_executed']:,}")
                 quality_cards[4].metric("No evaluadas", f"{quality_controls['rules_not_evaluated']:,}")
                 quality_cards[5].metric("Excluidas", f"{quality_controls['rules_excluded']:,}")
 
@@ -1153,9 +1151,9 @@ with tabs[5]:
 
                 if quality_controls["rules_not_evaluated"] or quality_controls["rules_excluded"]:
                     st.caption(
-                        f"No se incorporaron al resumen {quality_controls['rules_not_evaluated']:,} reglas "
-                        f"sin variables suficientes y {quality_controls['rules_excluded']:,} reglas que "
-                        "requieren fuentes externas sensibles."
+                        f"No se incorporaron {quality_controls['rules_not_evaluated']:,} vladilaciones "
+                        f"sin variables suficientes y {quality_controls['rules_excluded']:,} validaciones que "
+                        "requieren bases del SIPE."
                     )
 
     with quality_tabs[1]:
