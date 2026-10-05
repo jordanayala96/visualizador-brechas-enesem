@@ -186,13 +186,13 @@ def load_coverage_directory(
     out["week_field"] = _week_number(_series(raw, resolved, "week_field"))
     out["week_crit"] = _week_number(_series(raw, resolved, "week_crit"))
     out["date_socialization"] = pd.to_datetime(
-        _series(raw, resolved, "socialization_date"), errors="coerce", dayfirst=True
+        _series(raw, resolved, "socialization_date"), errors="coerce", format="mixed", dayfirst=True
     )
     out["date_lift"] = pd.to_datetime(
-        _series(raw, resolved, "lift_date"), errors="coerce", dayfirst=True
+        _series(raw, resolved, "lift_date"), errors="coerce", format="mixed", dayfirst=True
     )
     out["date_crit"] = pd.to_datetime(
-        _series(raw, resolved, "crit_date"), errors="coerce", dayfirst=True
+        _series(raw, resolved, "crit_date"), errors="coerce", format="mixed", dayfirst=True
     )
 
     excluded = int(out["company_id"].eq(EXCLUDED_COMPANY_ID).sum())
