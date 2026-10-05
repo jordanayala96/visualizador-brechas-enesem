@@ -798,10 +798,22 @@ with tabs[4]:
             key="interviewer_granularity",
         )
 
-        person_activity = interviewer_activity_summary(person_frame, cutoff, granularity)
-        person_view = person_activity.loc[
-            person_activity["Encuestador/a"].eq(selected_person)
-        ].sort_values("Inicio periodo").reset_index(drop=True)
+                person_activity = interviewer_activity_summary(
+            person_period_frame,
+            cutoff,
+            granularity,
+        )
+
+        if person_activity.empty:
+            person_view = pd.DataFrame()
+        else:
+            person_view = (
+                person_activity.loc[
+                    person_activity["Encuestador/a"].eq(selected_person)
+                ]
+                .sort_values("Inicio periodo")
+                .reset_index(drop=True)
+            )
 
         if person_view.empty:
             st.info("El encuestador seleccionado no registra fechas operativas en el periodo.")
