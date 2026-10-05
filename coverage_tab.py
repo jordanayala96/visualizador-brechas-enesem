@@ -140,7 +140,7 @@ def render_coverage_tab(
     inferred_week = int((default_cutoff_ts - inferred_start).days // 7 + 1)
     inferred_week = min(max(inferred_week, 1), max_week)
 
-    st.markdown("#### Insumos y parámetros")
+    st.markdown("#### Parámetros")
     upload_col, status_col = st.columns([2, 1])
     with upload_col:
         progress_file = st.file_uploader(
