@@ -24,6 +24,16 @@ from enesem_data import (
     zonal_summary,
 )
 from coverage_tab import render_coverage_tab
+from quality_validations import (
+    evaluate_quality_validations,
+    load_quality_source,
+    load_week_calendar,
+)
+
+
+BASE_DIR = Path(__file__).resolve().parent
+FIELD_CALENDAR_PATH = BASE_DIR / "data" / "CAMPO.xlsx"
+CRITIQUE_CALENDAR_PATH = BASE_DIR / "data" / "CRITICA.xlsx"
 
 
 st.set_page_config(
@@ -61,6 +71,26 @@ def load_from_bytes(content: bytes, filename: str) -> pd.DataFrame:
 def load_from_path(path: str, modified: float) -> pd.DataFrame:
     del modified
     return load_directory(path)
+
+
+@st.cache_data(show_spinner=False)
+def run_quality_validations(
+    content: bytes,
+    filename: str,
+    allowed_cases: tuple[str, ...],
+    field_calendar_modified: float,
+    critique_calendar_modified: float,
+):
+    del field_calendar_modified, critique_calendar_modified
+    raw = load_quality_source(content, filename=filename)
+    field_calendar = load_week_calendar(FIELD_CALENDAR_PATH)
+    critique_calendar = load_week_calendar(CRITIQUE_CALENDAR_PATH)
+    return evaluate_quality_validations(
+        raw,
+        field_calendar=field_calendar,
+        critique_calendar=critique_calendar,
+        allowed_cases=allowed_cases,
+    )
 
 
 def default_file() -> Path | None:
@@ -747,33 +777,167 @@ with tabs[4]:
             )
 
 with tabs[5]:
-    st.subheader("Controles de calidad de las fechas")
-    checks = quality_summary(filtered, cutoff)
-    total_issues = int(checks["Casos"].sum())
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        st.metric("Incidencias detectadas", f"{total_issues:,}")
-        st.dataframe(checks, hide_index=True, use_container_width=True)
-    with c2:
-        st.vega_lite_chart(
-            checks,
-            {
-                "mark": {"type": "bar", "color": "#C65911", "cornerRadiusEnd": 4},
-                "encoding": {
-                    "y": {"field": "Control", "type": "nominal", "sort": "-x"},
-                    "x": {"field": "Casos", "type": "quantitative"},
-                    "tooltip": [
-                        {"field": "Control", "type": "nominal"},
-                        {"field": "Casos", "type": "quantitative", "format": ",.0f"},
-                    ],
-                },
-                "height": 330,
-            },
-            use_container_width=True,
+    st.subheader("Calidad de datos")
+    quality_tabs = st.tabs(["Validaciones del Directorio", "Controles temporales"])
+
+    with quality_tabs[0]:
+        st.markdown(
+            "<div class='method-note'>Las reglas se ejecutan únicamente cuando el Directorio contiene "
+            "todas las variables requeridas. Las reglas que necesitan bases externas sensibles se mantienen "
+            "excluidas y las columnas faltantes se reportan como no evaluadas.</div>",
+            unsafe_allow_html=True,
         )
-    problem_cases = quality_case_table(filtered, cutoff)
-    with st.expander("Ver casos que requieren corrección"):
-        st.dataframe(problem_cases, hide_index=True, use_container_width=True)
+        if not FIELD_CALENDAR_PATH.exists() or not CRITIQUE_CALENDAR_PATH.exists():
+            st.error("No se encontraron `data/CAMPO.xlsx` y `data/CRITICA.xlsx` en el proyecto.")
+        else:
+            try:
+                summary_quality, detail_quality, quality_controls = run_quality_validations(
+                    directory_content,
+                    directory_filename,
+                    tuple(filtered["caso"].astype(str).tolist()),
+                    FIELD_CALENDAR_PATH.stat().st_mtime,
+                    CRITIQUE_CALENDAR_PATH.stat().st_mtime,
+                )
+            except Exception as exc:
+                st.error(f"No fue posible ejecutar las validaciones del Directorio: {exc}")
+            else:
+                quality_cards = st.columns(6)
+                quality_cards[0].metric("Empresas evaluadas", f"{quality_controls['companies_evaluated']:,}")
+                quality_cards[1].metric("Con incidencias", f"{quality_controls['companies_with_issues']:,}")
+                quality_cards[2].metric("Incidencias", f"{quality_controls['issues']:,}")
+                quality_cards[3].metric("Reglas ejecutadas", f"{quality_controls['rules_executed']:,}")
+                quality_cards[4].metric("No evaluadas", f"{quality_controls['rules_not_evaluated']:,}")
+                quality_cards[5].metric("Excluidas", f"{quality_controls['rules_excluded']:,}")
+
+                if quality_controls["excluded_special_id"]:
+                    st.caption(
+                        f"Se excluyeron {quality_controls['excluded_special_id']:,} registros con "
+                        "Identificador Empresa = 99999999999."
+                    )
+
+                q1, q2 = st.columns(2)
+                category_options = summary_quality["Categoría"].drop_duplicates().tolist()
+                status_options = summary_quality["Estado"].drop_duplicates().tolist()
+                selected_categories = q1.multiselect(
+                    "Categoría de validación",
+                    category_options,
+                    default=category_options,
+                    key="quality_categories",
+                )
+                selected_statuses = q2.multiselect(
+                    "Estado de ejecución",
+                    status_options,
+                    default=status_options,
+                    key="quality_statuses",
+                )
+                summary_view = summary_quality.loc[
+                    summary_quality["Categoría"].isin(selected_categories)
+                    & summary_quality["Estado"].isin(selected_statuses)
+                ].copy()
+
+                left_quality, right_quality = st.columns([1.55, 1])
+                with left_quality:
+                    st.markdown("#### Resumen por validación")
+                    st.dataframe(
+                        summary_view,
+                        hide_index=True,
+                        use_container_width=True,
+                        column_config={
+                            "% con incidencia": st.column_config.ProgressColumn(
+                                "% con incidencia", min_value=0, max_value=1, format="percent"
+                            ),
+                        },
+                    )
+                with right_quality:
+                    st.markdown("#### Validaciones con más incidencias")
+                    chart_quality = summary_view.loc[
+                        summary_view["Estado"].eq("Ejecutada") & summary_view["Casos"].gt(0),
+                        ["Código", "Validación", "Casos"],
+                    ].sort_values("Casos", ascending=False).head(15)
+                    if chart_quality.empty:
+                        st.info("No existen incidencias para los filtros seleccionados.")
+                    else:
+                        st.vega_lite_chart(
+                            chart_quality,
+                            {
+                                "mark": {"type": "bar", "color": "#2C70E7", "cornerRadiusEnd": 4},
+                                "encoding": {
+                                    "y": {"field": "Código", "type": "nominal", "sort": "-x", "title": "Código"},
+                                    "x": {"field": "Casos", "type": "quantitative", "title": "Incidencias"},
+                                    "tooltip": [
+                                        {"field": "Código", "type": "nominal"},
+                                        {"field": "Validación", "type": "nominal"},
+                                        {"field": "Casos", "type": "quantitative", "format": ",.0f"},
+                                    ],
+                                },
+                                "height": 390,
+                            },
+                            use_container_width=True,
+                        )
+
+                st.markdown("#### Detalle de inconsistencias")
+                executed_codes = summary_quality.loc[
+                    summary_quality["Estado"].eq("Ejecutada"), "Código"
+                ].tolist()
+                selected_codes = st.multiselect(
+                    "Validaciones para mostrar",
+                    executed_codes,
+                    default=executed_codes,
+                    key="quality_codes",
+                )
+                detail_view = detail_quality.loc[detail_quality["Código"].isin(selected_codes)].copy()
+                if detail_view.empty:
+                    st.success("No existen inconsistencias para las validaciones seleccionadas.")
+                else:
+                    st.dataframe(detail_view, hide_index=True, use_container_width=True)
+
+                quality_excel = BytesIO()
+                with pd.ExcelWriter(quality_excel, engine="openpyxl") as writer:
+                    summary_quality.to_excel(writer, sheet_name="Resumen validaciones", index=False)
+                    detail_quality.to_excel(writer, sheet_name="Detalle inconsistencias", index=False)
+                st.download_button(
+                    "Descargar validaciones en Excel",
+                    data=quality_excel.getvalue(),
+                    file_name="validaciones_directorio_enesem.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="download_quality_validations",
+                )
+
+                unavailable = summary_quality.loc[
+                    ~summary_quality["Estado"].eq("Ejecutada"),
+                    ["Código", "Validación", "Estado", "Variables faltantes"],
+                ]
+                with st.expander("Reglas no evaluadas o excluidas"):
+                    st.dataframe(unavailable, hide_index=True, use_container_width=True)
+
+    with quality_tabs[1]:
+        st.markdown("#### Controles de calidad de las fechas")
+        checks = quality_summary(filtered, cutoff)
+        total_issues = int(checks["Casos"].sum())
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            st.metric("Incidencias detectadas", f"{total_issues:,}")
+            st.dataframe(checks, hide_index=True, use_container_width=True)
+        with c2:
+            st.vega_lite_chart(
+                checks,
+                {
+                    "mark": {"type": "bar", "color": "#2C70E7", "cornerRadiusEnd": 4},
+                    "encoding": {
+                        "y": {"field": "Control", "type": "nominal", "sort": "-x"},
+                        "x": {"field": "Casos", "type": "quantitative"},
+                        "tooltip": [
+                            {"field": "Control", "type": "nominal"},
+                            {"field": "Casos", "type": "quantitative", "format": ",.0f"},
+                        ],
+                    },
+                    "height": 330,
+                },
+                use_container_width=True,
+            )
+        problem_cases = quality_case_table(filtered, cutoff)
+        with st.expander("Ver casos que requieren corrección"):
+            st.dataframe(problem_cases, hide_index=True, use_container_width=True)
 
 with tabs[6]:
     render_coverage_tab(
