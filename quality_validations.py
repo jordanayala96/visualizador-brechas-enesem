@@ -518,6 +518,7 @@ register(
         ("22-D", "correo electrónico", "new_email", "sample_email"),
         ("22-E", "página web", "new_web", "sample_web"),
     ]
+
 for code, label, new_key, old_key in comparisons:
     register(
         code,
@@ -545,9 +546,6 @@ for code, label, new_key, old_key in comparisons:
         ],
         f"El nuevo {label} debe diferir del registrado en la muestra.",
     )
-            [new_key, old_key], f"El nuevo {label} debe diferir del registrado en la muestra.",
-        )
-
     def phone_length_issue(key: str, minimum: int = 7, maximum: int = 10) -> pd.Series:
         length = _phone(s(key)).str.len()
         return ~length.between(minimum, maximum)
