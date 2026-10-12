@@ -604,10 +604,6 @@ def evaluate_quality_validations(
         maximum: int = 10,
     ) -> pd.Series:
         
-    def phone_length_issue(key: str, minimum: int = 7, maximum: int = 10) -> pd.Series:
-        length = _phone(s(key)).str.len()
-        return ~length.between(minimum, maximum)
-
     def repeated_phone_issue(key: str) -> pd.Series:
         return _phone(s(key)).str.contains(r"0{5,}|9{5,}", regex=True, na=False)
 
