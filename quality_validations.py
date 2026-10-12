@@ -484,19 +484,67 @@ register(
     ],
     "El tamaño nuevo debe ser distinto al tamaño de la muestra.",
 )
+
+register(
+    "22-A",
+    "La actualización debe reflejar un cambio real en el número de establecimientos",
+    "Actualización de datos",
+    [
+        "criticized",
+        "update_company",
+        "new_establishments",
+        "sample_establishments",
+    ],
+    lambda: (
+        one("criticized")
+        & one("update_company")
+        & _number(s("new_establishments")).notna()
+    ),
+    lambda: (
+        _number(s("new_establishments")).eq(
+            _number(s("sample_establishments"))
+        )
+    ),
+    [
+        "new_establishments",
+        "sample_establishments",
+    ],
+    "El nuevo número de establecimientos debe diferir del registrado en la muestra.",
+)
+
     comparisons = [
-        ("22-A", "número de establecimientos", "new_establishments", "sample_establishments"),
         ("22-B", "teléfono 1", "new_phone_1", "sample_phone_1"),
         ("22-C", "teléfono 2", "new_phone_2", "sample_phone_2"),
         ("22-D", "correo electrónico", "new_email", "sample_email"),
         ("22-E", "página web", "new_web", "sample_web"),
     ]
-    for code, label, new_key, old_key in comparisons:
-        register(
-            code, f"La actualización debe reflejar un cambio real en {label}", "Actualización de datos",
-            ["criticized", "update_company", new_key, old_key],
-            lambda new_key=new_key: one("criticized") & one("update_company") & ~_blank(s(new_key)),
-            lambda new_key=new_key, old_key=old_key: _norm_text(s(new_key)).eq(_norm_text(s(old_key))),
+for code, label, new_key, old_key in comparisons:
+    register(
+        code,
+        f"La actualización debe reflejar un cambio real en {label}",
+        "Actualización de datos",
+        [
+            "criticized",
+            "update_company",
+            new_key,
+            old_key,
+        ],
+        lambda new_key=new_key: (
+            one("criticized")
+            & one("update_company")
+            & ~_blank(s(new_key))
+        ),
+        lambda new_key=new_key, old_key=old_key: (
+            _norm_text(s(new_key)).eq(
+                _norm_text(s(old_key))
+            )
+        ),
+        [
+            new_key,
+            old_key,
+        ],
+        f"El nuevo {label} debe diferir del registrado en la muestra.",
+    )
             [new_key, old_key], f"El nuevo {label} debe diferir del registrado en la muestra.",
         )
 
