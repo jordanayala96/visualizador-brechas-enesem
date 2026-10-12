@@ -512,7 +512,7 @@ def evaluate_quality_validations(
         "El nuevo número de establecimientos debe diferir del registrado en la muestra.",
     )
 
-    comparisons = [
+    phone_comparisons = [
         (
             "22-B",
             "teléfono 1",
@@ -525,6 +525,37 @@ def evaluate_quality_validations(
             "new_phone_2",
             "sample_phone_2",
         ),
+    ]
+
+    for code, label, new_key, old_key in phone_comparisons:
+        register(
+            code,
+            f"La actualización debe reflejar un cambio real en {label}",
+            "Actualización de datos",
+            [
+                "criticized",
+                "update_company",
+                new_key,
+                old_key,
+            ],
+            lambda new_key=new_key: (
+                one("criticized")
+                & one("update_company")
+                & ~_blank(s(new_key))
+            ),
+            lambda new_key=new_key, old_key=old_key: (
+                _phone(s(new_key)).eq(
+                    _phone(s(old_key))
+                )
+            ),
+            [
+                new_key,
+                old_key,
+            ],
+            f"El nuevo {label} debe diferir del registrado en la muestra.",
+        )
+
+        text_comparisons = [
         (
             "22-D",
             "correo electrónico",
@@ -539,6 +570,35 @@ def evaluate_quality_validations(
         ),
     ]
 
+    for code, label, new_key, old_key in text_comparisons:
+        register(
+            code,
+            f"La actualización debe reflejar un cambio real en {label}",
+            "Actualización de datos",
+            [
+                "criticized",
+                "update_company",
+                new_key,
+                old_key,
+            ],
+            lambda new_key=new_key: (
+                one("criticized")
+                & one("update_company")
+                & ~_blank(s(new_key))
+            ),
+            lambda new_key=new_key, old_key=old_key: (
+                _norm_text(s(new_key)).eq(
+                    _norm_text(s(old_key))
+                )
+            ),
+            [
+                new_key,
+                old_key,
+            ],
+            f"El nuevo {label} debe diferir del registrado en la muestra.",
+        )
+
+    
     for code, label, new_key, old_key in comparisons:
         register(
             code,
