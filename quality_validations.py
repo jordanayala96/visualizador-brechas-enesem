@@ -435,7 +435,7 @@ def evaluate_quality_validations(
         "17", "La calle principal no debe contener otros componentes de la dirección", "Información de empresa",
         ["criticized", "street_main"], lambda: one("criticized") & ~_blank(s("street_main")),
         lambda: _norm_text(s("street_main")).str.contains(
-            r"interseccion|kilometro|urbanizacion|nombre edificio|numero|numero de piso|referencia ubicacion|barrio|numero de oficina|ciudadela",
+            r"interseccion:|kilometro:|urbanizacion:|nombre edificio:|numero:|numero de piso:|referencia ubicacion:|barrio:|numero de oficina:|ciudadela:",
             regex=True, na=False,
         ),
         ["street_main"], "DIR_1 debe contener únicamente la calle principal.",
