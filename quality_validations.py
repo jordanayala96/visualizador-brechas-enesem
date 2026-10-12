@@ -217,8 +217,13 @@ def _word_count(series: pd.Series) -> pd.Series:
 
 
 def _phone(series: pd.Series) -> pd.Series:
-    return _identifier(series, default="").str.replace(r"\s+", "", regex=True)
+    return (
+        _identifier(series, default="")
+        .str.replace(r"\D+", "", regex=True)
+    )
 
+def _phone_for_comparison(series: pd.Series) -> pd.Series:
+    return _phone(series).str.lstrip("0")
 
 def _display_value(value: object) -> str:
     if pd.isna(value):
@@ -544,8 +549,8 @@ def evaluate_quality_validations(
                 & ~_blank(s(new_key))
             ),
             lambda new_key=new_key, old_key=old_key: (
-                _phone(s(new_key)).eq(
-                    _phone(s(old_key))
+                _phone_for_comparison(s(new_key)).eq(
+                    _phone_for_comparison(s(old_key))
                 )
             ),
             [
