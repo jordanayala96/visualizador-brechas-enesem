@@ -555,7 +555,7 @@ def evaluate_quality_validations(
             f"El nuevo {label} debe diferir del registrado en la muestra.",
         )
 
-        text_comparisons = [
+    text_comparisons = [
         (
             "22-D",
             "correo electrónico",
@@ -598,34 +598,11 @@ def evaluate_quality_validations(
             f"El nuevo {label} debe diferir del registrado en la muestra.",
         )
 
-    
-    for code, label, new_key, old_key in comparisons:
-        register(
-            code,
-            f"La actualización debe reflejar un cambio real en {label}",
-            "Actualización de datos",
-            [
-                "criticized",
-                "update_company",
-                new_key,
-                old_key,
-            ],
-            lambda new_key=new_key: (
-                one("criticized")
-                & one("update_company")
-                & ~_blank(s(new_key))
-            ),
-            lambda new_key=new_key, old_key=old_key: (
-                _norm_text(s(new_key)).eq(
-                    _norm_text(s(old_key))
-                )
-            ),
-            [
-                new_key,
-                old_key,
-            ],
-            f"El nuevo {label} debe diferir del registrado en la muestra.",
-        )
+    def phone_length_issue(
+        key: str,
+        minimum: int = 7,
+        maximum: int = 10,
+    ) -> pd.Series:
         
     def phone_length_issue(key: str, minimum: int = 7, maximum: int = 10) -> pd.Series:
         length = _phone(s(key)).str.len()
