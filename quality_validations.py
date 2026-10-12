@@ -447,14 +447,43 @@ def evaluate_quality_validations(
         lambda: ~two("effective_crit"),
         ["change_size", "new_size", "effective_crit"], "EFECT_CRIT = 2.",
     )
-    register(
-        "20", "El nuevo tamaño debe diferir del tamaño de la muestra", "Tamaño y efectividad",
-        ["criticized", "change_size", "new_size", "sample_size"],
-        lambda: one("criticized") & one("change_size"),
-        lambda: _norm_text(s("new_size")).eq(_norm_text(s("sample_size"))),
-        ["new_size", "sample_size"], "El tamaño nuevo debe ser distinto al tamaño de la muestra.",
-    )
 
+    def standardized_new_size() -> pd.Series:
+    new_size = _norm_text(s("new_size"))
+
+    size_mapping = {
+        "grande": "grande empresa",
+        "mediana a": "mediana empresa a",
+        "mediana b": "mediana empresa b",
+        "pequena empresa": "pequena empresa",
+        "micro empresa": "micro empresa",
+    }
+
+    return new_size.map(size_mapping)
+    
+register(
+    "20",
+    "El nuevo tamaño debe diferir del tamaño de la muestra",
+    "Tamaño y efectividad",
+    [
+        "criticized",
+        "change_size",
+        "new_size",
+        "sample_size",
+    ],
+    lambda: (
+        one("criticized")
+        & one("change_size")
+    ),
+    lambda: standardized_new_size().eq(
+        _norm_text(s("sample_size"))
+    ),
+    [
+        "new_size",
+        "sample_size",
+    ],
+    "El tamaño nuevo debe ser distinto al tamaño de la muestra.",
+)
     comparisons = [
         ("22-A", "número de establecimientos", "new_establishments", "sample_establishments"),
         ("22-B", "teléfono 1", "new_phone_1", "sample_phone_1"),
