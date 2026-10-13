@@ -409,32 +409,88 @@ def evaluate_quality_validations(
     )
 
     effective_novelties = {
-        normalize_name(value) for value in [
-            "Cambio de rama de actividad", "Cambio de sector económico", "Cambio de razón social",
-            "Cambio de RUC", "Actualización de ubicación geográfica/zonificación",
-            "Empresas que producen para terceros", "Fusionadas", "Absorbidas", "Desintegración", "Escisión",
+        normalize_name(value)
+        for value in [
+            "Cambio de rama de actividad",
+            "Cambio de sector económico",
+            "Cambio de razón social",
+            "Cambio de RUC",
+            "Actualización de ubicación geográfica/zonificación",
+            "Empresas que producen para terceros",
+            "Fusionadas",
+            "Absorbidas",
+            "Desintegración",
+            "Escisión",
         ]
     }
+
     non_effective_novelties = {
-        normalize_name(value) for value in [
-            "No Ubicadas", "Rechazos", "Liquidadas",
+        normalize_name(value)
+        for value in [
+            "No Ubicadas",
+            "Rechazos",
+            "Liquidadas",
             "Sin características - Ingresos y número de personal afiliado",
             "Sin características - Ingresos y/o número de personal ocupado",
             "Sin características - Sector no investigado",
             "Sin características - Rama de actividad no investigada",
-            "Sin características - Sin Contabilidad en el año de referencia", "Inactivas",
+            "Sin características - Sin Contabilidad en el año de referencia",
+            "Inactivas",
         ]
     }
 
     def novelty_issue() -> pd.Series:
         effect = _number(s("effective_crit"))
         novelty = _norm_text(s("novelty"))
-        return effect.isna() | ((effect.eq(1)) & ~novelty.isin(effective_novelties)) | ((effect.eq(2)) & ~novelty.isin(non_effective_novelties)) | (~effect.isin([1, 2]))
+
+        # Primera parte de la validación:
+        # toda empresa criticada debe tener EFECT_CRIT.
+        missing_effect = effect.isna()
+
+        # Segunda parte:
+        # la correspondencia con DESGLO_EFECT solamente se revisa
+        # cuando LEVAN_SN = 2.
+        validate_novelty = two("lift_result")
+
+        valid_effective = (
+            effect.eq(1)
+            & novelty.isin(effective_novelties)
+        )
+
+        valid_non_effective = (
+            effect.eq(2)
+            & novelty.isin(non_effective_novelties)
+        )
+
+        invalid_correspondence = (
+            validate_novelty
+            & ~(valid_effective | valid_non_effective)
+        )
+
+        return missing_effect | invalid_correspondence
 
     register(
-        "14", "La efectividad debe corresponder con el esquema de novedades", "Novedades",
-        ["criticized", "effective_crit", "novelty"], lambda: one("criticized"), novelty_issue,
-        ["effective_crit", "novelty"], "EFECT_CRIT y DESGLO_EFECT deben corresponder a la misma clasificación.",
+        "14",
+        "La efectividad debe corresponder con el esquema de novedades",
+        "Novedades",
+        [
+            "criticized",
+            "lift_result",
+            "effective_crit",
+            "novelty",
+        ],
+        lambda: one("criticized"),
+        novelty_issue,
+        [
+            "lift_result",
+            "effective_crit",
+            "novelty",
+        ],
+        (
+            "Toda encuesta criticada debe registrar EFECT_CRIT. "
+            "Cuando LEVAN_SN = 2, EFECT_CRIT y DESGLO_EFECT "
+            "deben corresponder a la misma clasificación."
+        ),
     )
     register(
         "17", "La calle principal no debe contener otros componentes de la dirección", "Información de empresa",
